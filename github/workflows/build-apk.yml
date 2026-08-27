@@ -1,0 +1,54 @@
+name: Build MUSA AJI APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 34
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Extract Android project
+        run: |
+          rm -rf extracted
+          mkdir extracted
+          unzip -q MusaAjiApp_COMPLETED_V2.zip -d extracted
+          test -f extracted/MusaAjiApp/settings.gradle.kts
+
+      - name: Build APK
+        working-directory: extracted/MusaAjiApp
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: musa-aji-debug-apk
+          path: extracted/MusaAjiApp/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
